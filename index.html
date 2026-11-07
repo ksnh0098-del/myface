@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>귀여운 동물 캐릭터 표정 동기화</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Jua & Gowun Dodum -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 9999px;
+        }
+        /* Smooth scale transitions for buttons */
+        .btn-bounce {
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s, box-shadow 0.2s;
+        }
+        .btn-bounce:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-slate-800 h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="w-full bg-white/70 backdrop-blur-md border-b border-amber-100 px-4 py-2.5 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl">🐱</span>
+            <h1 class="text-lg sm:text-xl font-jua text-amber-800 tracking-wide">내 표정 따라하는 동물 친구들</h1>
+        </div>
+        <div class="flex items-center space-x-2">
+            <!-- Reset Calibration Button -->
+            <button id="btn-recalibrate" class="btn-bounce hidden px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-xs sm:text-sm font-jua shadow-sm flex items-center space-x-1">
+                <span>🎯</span>
+                <span>영점 재정정</span>
+            </button>
+            <!-- Demo Mode Toggle -->
+            <button id="btn-demo-toggle" class="btn-bounce px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 rounded-xl text-xs sm:text-sm font-jua shadow-sm flex items-center space-x-1">
+                <span>🎮</span>
+                <span id="demo-toggle-text">데모 모드</span>
+            </button>
+            <!-- Settings Drawer Toggle Button -->
+            <button id="btn-toggle-settings" class="btn-bounce p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm shadow-sm">
+                ⚙️
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="relative flex-1 w-full h-full overflow-hidden flex flex-col md:flex-row">
+        
+        <!-- Main Character Stage -->
+        <main id="stage" class="relative flex-1 h-full w-full flex items-center justify-center p-4 transition-colors duration-500 bg-amber-50">
+            
+            <!-- Detected Expression Badge (Debug Label) -->
+            <div id="debug-badge" class="absolute top-4 left-4 bg-white/80 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-md border border-white/60 text-xs sm:text-sm font-jua text-slate-700 z-10 flex items-center space-x-2">
+                <span id="debug-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="expression-label">얼굴을 기다리는 중...</span>
+            </div>
+
+            <!-- Face Warning Box (when face is lost) -->
+            <div id="face-warning" class="hidden absolute top-16 bg-rose-500/90 text-white font-jua px-4 py-2 rounded-2xl shadow-lg z-10 text-sm animate-bounce">
+                👀 화면을 정면으로 바라봐 주세요! (얼굴 미감지)
+            </div>
+
+            <!-- SVG Avatar Container -->
+            <div id="avatar-wrapper" class="w-full max-w-[420px] max-h-[420px] aspect-square flex items-center justify-center transition-all duration-300">
+                <!-- SVG injected dynamically -->
+            </div>
+
+            <!-- Controls Side/Bottom Floating Bar for Character Selection -->
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-2 sm:space-x-3 bg-white/80 backdrop-blur-md p-2 rounded-2xl shadow-lg border border-white/50 z-10 max-w-full overflow-x-auto">
+                <button data-char="cat" class="char-select-btn btn-bounce px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-jua transition-all bg-amber-100 text-amber-800 shadow-sm border border-amber-300 whitespace-nowrap">
+                    🐱 고양이
+                </button>
+                <button data-char="rabbit" class="char-select-btn btn-bounce px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-jua transition-all text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                    🐰 토끼
+                </button>
+                <button data-char="bear" class="char-select-btn btn-bounce px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-jua transition-all text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                    🐻 곰
+                </button>
+                <button data-char="squirrel" class="char-select-btn btn-bounce px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-jua transition-all text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                    🐿️ 다람쥐
+                </button>
+            </div>
+        </main>
+
+        <!-- Right Side Settings Panel (Collapsible) -->
+        <aside id="settings-panel" class="hidden absolute md:relative right-0 top-0 h-full w-full md:w-80 bg-white/95 backdrop-blur-md border-l border-amber-100 z-30 p-5 overflow-y-auto flex flex-col justify-between shadow-2xl md:shadow-none transition-all">
+            <div>
+                <div class="flex items-center justify-between mb-4 border-b pb-3">
+                    <h2 class="text-lg font-jua text-slate-800">⚙️ 상세 옵션</h2>
+                    <button id="btn-close-settings" class="md:hidden text-gray-400 hover:text-gray-600 p-1">✕</button>
+                </div>
+
+                <!-- Privacy & Camera Controls -->
+                <div class="space-y-4 text-sm">
+                    <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="font-jua text-amber-900">카메라 미리보기</span>
+                            <input type="checkbox" id="toggle-webcam-preview" checked class="w-4 h-4 accent-amber-500">
+                        </label>
+                    </div>
+
+                    <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="font-jua text-amber-900">카메라 좌우 반전 (거울)</span>
+                            <input type="checkbox" id="toggle-mirror" checked class="w-4 h-4 accent-amber-500">
+                        </label>
+                    </div>
+
+                    <!-- Sensitivity Sliders -->
+                    <div class="space-y-3 pt-2">
+                        <h3 class="font-jua text-slate-700 text-sm">민감도 조절</h3>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>눈 깜빡임 민감도</span>
+                                <span id="val-sens-blink">1.0</span>
+                            </div>
+                            <input type="range" id="slider-sens-blink" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>입 벌림 민감도</span>
+                                <span id="val-sens-mouth">1.0</span>
+                            </div>
+                            <input type="range" id="slider-sens-mouth" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>고개 움직임 민감도</span>
+                                <span id="val-sens-head">1.0</span>
+                            </div>
+                            <input type="range" id="slider-sens-head" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>부드러움 (스무딩)</span>
+                                <span id="val-smoothing">0.25</span>
+                            </div>
+                            <input type="range" id="slider-smoothing" min="0.05" max="0.6" step="0.05" value="0.25" class="w-full accent-amber-500">
+                        </div>
+                    </div>
+
+                    <!-- Stage Background Colors -->
+                    <div class="pt-2">
+                        <h3 class="font-jua text-slate-700 text-sm mb-2">배경색 선택</h3>
+                        <div class="flex space-x-2">
+                            <button data-bg="#FFF9F3" class="w-8 h-8 rounded-full bg-[#FFF9F3] border-2 border-slate-300 shadow-sm hover:scale-110 transition-transform"></button>
+                            <button data-bg="#F0FDF4" class="w-8 h-8 rounded-full bg-[#F0FDF4] border-2 border-slate-300 shadow-sm hover:scale-110 transition-transform"></button>
+                            <button data-bg="#EFF6FF" class="w-8 h-8 rounded-full bg-[#EFF6FF] border-2 border-slate-300 shadow-sm hover:scale-110 transition-transform"></button>
+                            <button data-bg="#FAF5FF" class="w-8 h-8 rounded-full bg-[#FAF5FF] border-2 border-slate-300 shadow-sm hover:scale-110 transition-transform"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <div class="pt-4 border-t mt-4">
+                <button id="btn-screenshot" class="btn-bounce w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-jua rounded-xl shadow-md flex items-center justify-center space-x-2">
+                    <span>📸</span>
+                    <span>캐릭터 스크린샷 저장</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Webcam Floating Preview (Bottom Right) -->
+        <div id="webcam-preview-box" class="absolute bottom-20 right-4 w-32 h-24 sm:w-40 sm:h-30 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/80 bg-slate-900 z-20 transition-all">
+            <video id="webcam" autoplay playsinline class="w-full h-full object-cover -scale-x-100"></video>
+            <div class="absolute bottom-1 left-2 text-[10px] text-white/80 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-sm">웹캠 미리보기</div>
+        </div>
+    </div>
+
+    <!-- Start Overlay Modal -->
+    <div id="start-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-amber-100 text-center space-y-5">
+            <div class="text-5xl animate-bounce">🐱🐰🐻🐿️</div>
+            <h2 class="text-2xl font-jua text-amber-900">내 표정을 따라하는 동물 친구들</h2>
+            <p class="text-sm text-gray-600 leading-relaxed">
+                웹캠을 통해 사용자의 눈 깜빡임, 입 벌림, 고개의 기울임을 실시간으로 인식하여 캐릭터가 그대로 표현합니다!
+            </p>
+            
+            <div class="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-xs text-emerald-800 text-left space-y-1">
+                <div class="font-bold flex items-center space-x-1">
+                    <span>🔒</span> <span>개인정보 안심 보장</span>
+                </div>
+                <p>모든 영상 인식 및 표정 처리는 브라우저 내부(MediaPipe GPU/CPU)에서 직접 실행되며 외부 서버로 절대 송출되지 않습니다.</p>
+            </div>
+
+            <div class="pt-2 space-y-2">
+                <button id="btn-start-camera" class="btn-bounce w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-jua text-lg rounded-2xl shadow-lg flex items-center justify-center space-x-2">
+                    <span>📹</span>
+                    <span>카메라 시작하기</span>
+                </button>
+                <button id="btn-start-demo" class="btn-bounce w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-jua text-sm rounded-2xl">
+                    🎮 카메라 없이 데모 모드로 시작
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay Modal -->
+    <div id="loading-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <h3 class="text-lg font-jua text-slate-800" id="loading-text">AI 모델을 로딩 중입니다...</h3>
+            <p class="text-xs text-gray-500">최초 실행 시 MediaPipe 랜드마크 모델 수신에 시간이 조금 걸릴 수 있습니다.</p>
+        </div>
+    </div>
+
+    <!-- Calibration Modal Overlay -->
+    <div id="calibration-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white/95 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-3 border-2 border-amber-300">
+            <div class="text-4xl">🎯</div>
+            <h3 class="text-lg font-jua text-amber-900">영점 캘리브레이션</h3>
+            <p class="text-sm text-gray-600">정면을 바라보고 편안한 무표정으로 2초간 가만히 계셔주세요!</p>
+            <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                <div id="calibration-bar" class="bg-amber-400 h-full w-0 transition-all duration-100"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Overlay Modal -->
+    <div id="error-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-rose-200 text-center space-y-4">
+            <div class="text-4xl text-rose-500">⚠️</div>
+            <h3 class="text-xl font-jua text-rose-600" id="error-title">오류가 발생했습니다</h3>
+            <p class="text-sm text-gray-600 leading-relaxed" id="error-desc">카메라 접근 권한이 필요합니다.</p>
+            
+            <div class="bg-slate-100 p-3 rounded-2xl text-left text-xs text-slate-600 space-y-1">
+                <p class="font-bold">💡 조치 방법 안내:</p>
+                <ul class="list-disc list-inside space-y-0.5">
+                    <li>브라우저 주소창 왼쪽 🔒 아이콘을 눌러 카메라 권한을 '허용'으로 변경하세요.</li>
+                    <li>미리보기(iframe) 창 환경에서는 카메라 권한이 제한될 수 있습니다. <b>새 탭에서 열기</b> 또는 <b>HTML 파일 저장</b> 후 실행을 권장합니다.</li>
+                </ul>
+            </div>
+
+            <div class="pt-2 space-y-2">
+                <button id="btn-error-retry" class="btn-bounce w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-jua rounded-2xl">
+                    🔄 다시 시도하기
+                </button>
+                <button id="btn-error-demo" class="btn-bounce w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-jua rounded-2xl text-sm">
+                    🎮 데모 모드로 체험하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas for Screenshot Export (Hidden) -->
+    <canvas id="export-canvas" class="hidden"></canvas>
+
+    <!-- Main Logic Script -->
+    <script type="module">
+        /* ==========================================================================
+           1. CONFIGURATION & GLOBAL TUNING CONSTANTS (튜닝용 상수)
+           ========================================================================== */
+        const CONFIG = {
+            BLINK_CLOSE_THRESHOLD: 0.50, // 눈 감음 히스테리시스 상한
+            BLINK_OPEN_THRESHOLD: 0.35,  // 눈 열림 히스테리시스 하한
+            DEFAULT_ALPHA: 0.25,         // 지수이동평균(EMA) 기본 스무딩 계수
+            BLINK_ALPHA: 0.70,           // 눈 깜빡임 반응을 빠른 민감도로 처리하기 위한 스무딩 계수
+            LIMITS: {
+                YAW: 45,    // 좌우 회전 최대 angle (도)
+                PITCH: 35,  // 위아래 회전 최대 angle (도)
+                ROLL: 30    // 기울임 최대 angle (도)
+            },
+            EAR_SPRING_STIFFNESS: 0.12,  // 귀 말랑거림 관성 스프링 계수
+            EAR_SPRING_DAMPING: 0.75     // 귀 감쇠 계수
+        };
+
+        /* ==========================================================================
+           2. SMOOTHING FILTERS & UTILITIES (필터 및 유틸리티)
+           ========================================================================== */
+        class EMAFilter {
+            constructor(alpha = CONFIG.DEFAULT_ALPHA, initialValue = 0) {
+                this.alpha = alpha;
+                this.value = initialValue;
+                this.initialized = false;
+            }
+            filter(newValue) {
+                if (!this.initialized) {
+                    this.value = newValue;
+                    this.initialized = true;
+                    return newValue;
+                }
+                this.value = this.alpha * newValue + (1 - this.alpha) * this.value;
+                return this.value;
+            }
+            reset() {
+                this.initialized = false;
+                this.value = 0;
+            }
+        }
+
+        const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+        /* ==========================================================================
+           3. ANIMAL CHARACTER DEFINITIONS (캐릭터 SVG 4종)
+           ========================================================================== */
+        const CHARACTERS = {
+            cat: {
+                name: '고양이',
+                bgColor: '#FFF9F3',
+                renderSVG: () => `
+                    <svg id="avatar-svg" viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+                        <g id="head-group" transform-origin="200 220">
+                            <!-- Ears Group -->
+                            <g id="ear-left" transform-origin="110 130">
+                                <path d="M 80 160 L 110 70 L 160 140 Z" fill="#FFD1DC" stroke="#4A3E3D" stroke-width="7" stroke-linejoin="round"/>
+                                <path d="M 95 150 L 115 90 L 145 135 Z" fill="#FFB6C1"/>
+                            </g>
+                            <g id="ear-right" transform-origin="290 130">
+                                <path d="M 320 160 L 290 70 L 240 140 Z" fill="#FFD1DC" stroke="#4A3E3D" stroke-width="7" stroke-linejoin="round"/>
+                                <path d="M 305 150 L 285 90 L 255 135 Z" fill="#FFB6C1"/>
+                            </g>
+
+                            <!-- Head Base -->
+                            <ellipse cx="200" cy="230" rx="130" ry="110" fill="#FFE5D9" stroke="#4A3E3D" stroke-width="7"/>
+
+                            <!-- Face Features Container -->
+                            <g id="face-features" transform-origin="200 230">
+                                <!-- Whiskers -->
+                                <path d="M 80 220 L 20 210 M 80 235 L 15 235 M 80 250 L 25 260" stroke="#4A3E3D" stroke-width="5" stroke-linecap="round"/>
+                                <path d="M 320 220 L 380 210 M 320 235 L 385 235 M 320 250 L 375 260" stroke="#4A3E3D" stroke-width="5" stroke-linecap="round"/>
+
+                                <!-- Cheeks -->
+                                <circle id="blush-left" cx="115" cy="245" r="22" fill="#FF8FA3" opacity="0.6"/>
+                                <circle id="blush-right" cx="285" cy="245" r="22" fill="#FF8FA3" opacity="0.6"/>
+
+                                <!-- Eyebrows -->
+                                <g id="eyebrow-left" transform-origin="135 160">
+                                    <path d="M 115 160 Q 135 150 155 160" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+                                <g id="eyebrow-right" transform-origin="265 160">
+                                    <path d="M 245 160 Q 265 150 285 160" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Left Eye -->
+                                <g id="eye-left" transform-origin="135 200">
+                                    <ellipse class="eye-white" cx="135" cy="200" rx="22" ry="28" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="135" cy="200" r="14" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="139" cy="194" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 113 200 Q 135 218 157 200" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Right Eye -->
+                                <g id="eye-right" transform-origin="265 200">
+                                    <ellipse class="eye-white" cx="265" cy="200" rx="22" ry="28" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="265" cy="200" r="14" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="269" cy="194" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 243 200 Q 265 218 287 200" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Pink Nose -->
+                                <polygon points="200,230 190,220 210,220" fill="#FF8FA3" stroke="#4A3E3D" stroke-width="4" stroke-linejoin="round"/>
+
+                                <!-- Mouth -->
+                                <g id="mouth-group" transform-origin="200 248">
+                                    <path id="mouth-path" d="M 180 242 Q 190 252 200 245 Q 210 252 220 242" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                    <path id="tongue" d="M 191 247 Q 200 262 209 247 Z" fill="#FF7979" class="hidden"/>
+                                </g>
+                            </g>
+                        </g>
+                    </svg>
+                `
+            },
+            rabbit: {
+                name: '토끼',
+                bgColor: '#F0FDF4',
+                renderSVG: () => `
+                    <svg id="avatar-svg" viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+                        <g id="head-group" transform-origin="200 230">
+                            <!-- Ears Group -->
+                            <g id="ear-left" transform-origin="125 140">
+                                <rect x="100" y="20" width="45" height="150" rx="22.5" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="7"/>
+                                <rect x="110" y="35" width="25" height="120" rx="12.5" fill="#FFD1DC"/>
+                            </g>
+                            <g id="ear-right" transform-origin="275 140">
+                                <rect x="255" y="20" width="45" height="150" rx="22.5" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="7"/>
+                                <rect x="265" y="35" width="25" height="120" rx="12.5" fill="#FFD1DC"/>
+                            </g>
+
+                            <!-- Head Base -->
+                            <ellipse cx="200" cy="235" rx="125" ry="110" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="7"/>
+
+                            <!-- Face Features Container -->
+                            <g id="face-features" transform-origin="200 235">
+                                <!-- Cheeks -->
+                                <circle id="blush-left" cx="115" cy="250" r="24" fill="#FFB6C1" opacity="0.6"/>
+                                <circle id="blush-right" cx="285" cy="250" r="24" fill="#FFB6C1" opacity="0.6"/>
+
+                                <!-- Eyebrows -->
+                                <g id="eyebrow-left" transform-origin="135 165">
+                                    <path d="M 115 165 Q 135 155 155 165" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+                                <g id="eyebrow-right" transform-origin="265 165">
+                                    <path d="M 245 165 Q 265 155 285 165" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Left Eye -->
+                                <g id="eye-left" transform-origin="135 205">
+                                    <ellipse class="eye-white" cx="135" cy="205" rx="22" ry="28" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="135" cy="205" r="14" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="139" cy="199" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 113 205 Q 135 223 157 205" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Right Eye -->
+                                <g id="eye-right" transform-origin="265 205">
+                                    <ellipse class="eye-white" cx="265" cy="205" rx="22" ry="28" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="265" cy="205" r="14" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="269" cy="199" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 243 205 Q 265 223 287 205" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Nose -->
+                                <ellipse cx="200" cy="235" rx="8" ry="6" fill="#FF8FA3"/>
+
+                                <!-- Mouth -->
+                                <g id="mouth-group" transform-origin="200 252">
+                                    <path id="mouth-path" d="M 182 248 Q 191 258 200 252 Q 209 258 218 248" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                    <path id="tongue" d="M 191 255 Q 200 270 209 255 Z" fill="#FF7979" class="hidden"/>
+                                </g>
+                            </g>
+                        </g>
+                    </svg>
+                `
+            },
+            bear: {
+                name: '곰',
+                bgColor: '#EFF6FF',
+                renderSVG: () => `
+                    <svg id="avatar-svg" viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+                        <g id="head-group" transform-origin="200 230">
+                            <!-- Ears Group -->
+                            <g id="ear-left" transform-origin="100 130">
+                                <circle cx="100" cy="130" r="45" fill="#D97706" stroke="#4A3E3D" stroke-width="7"/>
+                                <circle cx="100" cy="130" r="25" fill="#FDE68A"/>
+                            </g>
+                            <g id="ear-right" transform-origin="300 130">
+                                <circle cx="300" cy="130" r="45" fill="#D97706" stroke="#4A3E3D" stroke-width="7"/>
+                                <circle cx="300" cy="130" r="25" fill="#FDE68A"/>
+                            </g>
+
+                            <!-- Head Base -->
+                            <ellipse cx="200" cy="235" rx="140" ry="115" fill="#D97706" stroke="#4A3E3D" stroke-width="7"/>
+
+                            <!-- Muzzle Patch -->
+                            <ellipse cx="200" cy="255" rx="55" ry="40" fill="#FEF3C7" stroke="#4A3E3D" stroke-width="5"/>
+
+                            <!-- Face Features Container -->
+                            <g id="face-features" transform-origin="200 235">
+                                <!-- Cheeks -->
+                                <circle id="blush-left" cx="100" cy="245" r="22" fill="#F43F5E" opacity="0.5"/>
+                                <circle id="blush-right" cx="300" cy="245" r="22" fill="#F43F5E" opacity="0.5"/>
+
+                                <!-- Eyebrows -->
+                                <g id="eyebrow-left" transform-origin="135 165">
+                                    <path d="M 115 165 Q 135 155 155 165" fill="none" stroke="#4A3E3D" stroke-width="7" stroke-linecap="round"/>
+                                </g>
+                                <g id="eyebrow-right" transform-origin="265 165">
+                                    <path d="M 245 165 Q 265 155 285 165" fill="none" stroke="#4A3E3D" stroke-width="7" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Left Eye -->
+                                <g id="eye-left" transform-origin="135 200">
+                                    <ellipse class="eye-white" cx="135" cy="200" rx="20" ry="26" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="135" cy="200" r="13" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="139" cy="194" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 115 200 Q 135 218 155 200" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Right Eye -->
+                                <g id="eye-right" transform-origin="265 200">
+                                    <ellipse class="eye-white" cx="265" cy="200" rx="20" ry="26" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="265" cy="200" r="13" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="269" cy="194" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 245 200 Q 265 218 285 200" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Bear Oval Nose -->
+                                <ellipse cx="200" cy="240" rx="16" ry="11" fill="#4A3E3D"/>
+
+                                <!-- Mouth -->
+                                <g id="mouth-group" transform-origin="200 262">
+                                    <path id="mouth-path" d="M 184 258 Q 192 268 200 260 Q 208 268 216 258" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                    <path id="tongue" d="M 191 262 Q 200 277 209 262 Z" fill="#FF7979" class="hidden"/>
+                                </g>
+                            </g>
+                        </g>
+                    </svg>
+                `
+            },
+            squirrel: {
+                name: '다람쥐',
+                bgColor: '#FFFBEB',
+                renderSVG: () => `
+                    <svg id="avatar-svg" viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+                        <g id="head-group" transform-origin="200 220">
+                            <!-- Ears Group -->
+                            <g id="ear-left" transform-origin="110 115">
+                                <path d="M 85 145 C 75 70, 125 60, 145 130 Z" fill="#D97706" stroke="#4A3E3D" stroke-width="7" stroke-linejoin="round"/>
+                                <path d="M 95 135 C 90 85, 120 78, 135 125 Z" fill="#FDE68A"/>
+                            </g>
+                            <g id="ear-right" transform-origin="290 115">
+                                <path d="M 315 145 C 325 70, 275 60, 255 130 Z" fill="#D97706" stroke="#4A3E3D" stroke-width="7" stroke-linejoin="round"/>
+                                <path d="M 305 135 C 310 85, 280 78, 265 125 Z" fill="#FDE68A"/>
+                            </g>
+
+                            <!-- Head Base -->
+                            <ellipse cx="200" cy="230" rx="135" ry="115" fill="#D97706" stroke="#4A3E3D" stroke-width="7"/>
+                            
+                            <!-- Muzzle Patch -->
+                            <ellipse cx="200" cy="255" rx="70" ry="55" fill="#FFFBEB" stroke="#4A3E3D" stroke-width="4"/>
+
+                            <!-- Face Features Container -->
+                            <g id="face-features" transform-origin="200 230">
+                                <!-- Stripes -->
+                                <path d="M 190 115 L 190 160" stroke="#78350F" stroke-width="6" stroke-linecap="round"/>
+                                <path d="M 200 115 L 200 170" stroke="#78350F" stroke-width="7" stroke-linecap="round"/>
+                                <path d="M 210 115 L 210 160" stroke="#78350F" stroke-width="6" stroke-linecap="round"/>
+
+                                <!-- Cheeks -->
+                                <circle id="blush-left" cx="105" cy="250" r="26" fill="#F43F5E" opacity="0.55"/>
+                                <circle id="blush-right" cx="295" cy="250" r="26" fill="#F43F5E" opacity="0.55"/>
+
+                                <!-- Eyebrows -->
+                                <g id="eyebrow-left" transform-origin="135 160">
+                                    <path d="M 115 160 Q 135 150 155 160" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+                                <g id="eyebrow-right" transform-origin="265 160">
+                                    <path d="M 245 160 Q 265 150 285 160" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Left Eye -->
+                                <g id="eye-left" transform-origin="135 205">
+                                    <ellipse class="eye-white" cx="135" cy="205" rx="22" ry="28" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="135" cy="205" r="14" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="139" cy="199" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 113 205 Q 135 222 157 205" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Right Eye -->
+                                <g id="eye-right" transform-origin="265 205">
+                                    <ellipse class="eye-white" cx="265" cy="205" rx="22" ry="28" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="6"/>
+                                    <circle class="pupil" cx="265" cy="205" r="14" fill="#4A3E3D"/>
+                                    <circle class="pupil-glint" cx="269" cy="199" r="5" fill="#FFFFFF"/>
+                                    <path class="eye-closed hidden" d="M 243 205 Q 265 222 287 205" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                </g>
+
+                                <!-- Nose -->
+                                <ellipse cx="200" cy="232" rx="10" ry="7" fill="#78350F"/>
+
+                                <!-- Mouth -->
+                                <g id="mouth-group" transform-origin="200 252">
+                                    <path id="mouth-path" d="M 182 248 Q 191 258 200 252 Q 209 258 218 248" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round"/>
+                                    <path id="tongue" d="M 191 255 Q 200 270 209 255 Z" fill="#FF7979" class="hidden"/>
+                                </g>
+                            </g>
+                        </g>
+                    </svg>
+                `
+            }
+        };
+
+        /* ==========================================================================
+           4. GLOBAL APP STATE & FILTERS
+           ========================================================================== */
+        const state = {
+            activeChar: 'cat',
+            isDemoMode: false,
+            isCalibrating: false,
+            faceDetected: false,
+            isMirror: true,
+            lastVideoTime: -1,
+            
+            // Sensitivity multipliers
+            sensitivity: {
+                blink: 1.0,
+                mouth: 1.0,
+                head: 1.0
+            },
+
+            // Calibration Offsets
+            calibration: {
+                jawOpen: 0,
+                pitch: 0,
+                yaw: 0,
+                roll: 0
+            },
+
+            // Demo Mode Mouse Inputs
+            demo: {
+                mouseX: 0,
+                mouseY: 0,
+                isClicking: false,
+                isSpace: false
+            },
+
+            // Physics state for ears lag
+            earSpring: {
+                angleL: 0,
+                angleR: 0,
+                velL: 0,
+                velR: 0
+            }
+        };
+
+        // Initialize EMA Filters for facial channels
+        const filters = {
+            blinkL: new EMAFilter(CONFIG.BLINK_ALPHA),
+            blinkR: new EMAFilter(CONFIG.BLINK_ALPHA),
+            jawOpen: new EMAFilter(),
+            mouthSmile: new EMAFilter(),
+            mouthFunnel: new EMAFilter(),
+            eyeLookX: new EMAFilter(),
+            eyeLookY: new EMAFilter(),
+            browLeft: new EMAFilter(),
+            browRight: new EMAFilter(),
+            yaw: new EMAFilter(),
+            pitch: new EMAFilter(),
+            roll: new EMAFilter()
+        };
+
+        let faceLandmarker = null;
+        let animationFrameId = null;
+
+        /* ==========================================================================
+           5. MEDIAPIPE INITIALIZATION (GPU with CPU Fallback)
+           ========================================================================== */
+        async function initMediaPipe() {
+            showLoading(true, "MediaPipe 라이브러리 및 AI 모델을 로드 중입니다...");
+            
+            try {
+                // Dynamically import MediaPipe Tasks Vision ES Module
+                const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs");
+                const { FaceLandmarker, FilesetResolver } = vision;
+
+                const resolver = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+                );
+
+                const modelUrl = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
+                // Try GPU delegate first, fallback to CPU
+                try {
+                    faceLandmarker = await FaceLandmarker.createFromOptions(resolver, {
+                        baseOptions: { modelAssetPath: modelUrl, delegate: "GPU" },
+                        runningMode: "VIDEO",
+                        numFaces: 1,
+                        outputFaceBlendshapes: true,
+                        outputFacialTransformationMatrixes: true
+                    });
+                } catch (gpuErr) {
+                    console.warn("GPU delegate failed, retrying with CPU...", gpuErr);
+                    faceLandmarker = await FaceLandmarker.createFromOptions(resolver, {
+                        baseOptions: { modelAssetPath: modelUrl, delegate: "CPU" },
+                        runningMode: "VIDEO",
+                        numFaces: 1,
+                        outputFaceBlendshapes: true,
+                        outputFacialTransformationMatrixes: true
+                    });
+                }
+
+                showLoading(false);
+                return true;
+            } catch (err) {
+                console.error("MediaPipe initialization error:", err);
+                showLoading(false);
+                // Fallback to Demo Mode automatically if script fails to load
+                startDemoMode("MediaPipe AI 모델 로딩에 실패하여 자동으로 '데모 모드'로 시작합니다.");
+                return false;
+            }
+        }
+
+        /* ==========================================================================
+           6. WEBCAM & CALIBRATION LOGIC
+           ========================================================================== */
+        async function startWebcam() {
+            const video = document.getElementById("webcam");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+                await new Promise(resolve => video.onloadedmetadata = resolve);
+                video.play();
+                
+                // Hide modals & trigger calibration
+                document.getElementById("start-modal").classList.add("hidden");
+                document.getElementById("error-modal").classList.add("hidden");
+                triggerCalibration();
+                
+                // Start Render Loop
+                if (!animationFrameId) {
+                    renderLoop();
+                }
+            } catch (err) {
+                console.error("Camera access error:", err);
+                showError("카메라를 사용할 수 없습니다", "카메라 접근 권한이 거부되었거나 지원하지 않는 브라우저 환경입니다.");
+            }
+        }
+
+        function triggerCalibration() {
+            if (state.isDemoMode) return;
+            state.isCalibrating = true;
+            const modal = document.getElementById("calibration-modal");
+            const bar = document.getElementById("calibration-bar");
+            modal.classList.remove("hidden");
+            bar.style.width = "0%";
+
+            let startTime = performance.now();
+            let accumulated = { jaw: 0, pitch: 0, yaw: 0, roll: 0, count: 0 };
+
+            const calibInterval = setInterval(() => {
+                let elapsed = performance.now() - startTime;
+                let pct = Math.min(100, (elapsed / 2000) * 100);
+                bar.style.width = pct + "%";
+
+                if (elapsed >= 2000) {
+                    clearInterval(calibInterval);
+                    modal.classList.add("hidden");
+                    state.isCalibrating = false;
+
+                    if (accumulated.count > 0) {
+                        state.calibration.jawOpen = accumulated.jaw / accumulated.count;
+                        state.calibration.pitch = accumulated.pitch / accumulated.count;
+                        state.calibration.yaw = accumulated.yaw / accumulated.count;
+                        state.calibration.roll = accumulated.roll / accumulated.count;
+                    }
+                    document.getElementById("btn-recalibrate").classList.remove("hidden");
+                }
+            }, 50);
+
+            // Store calibrator collector function globally for the loop
+            window._calibrationCollector = (jaw, pitch, yaw, roll) => {
+                accumulated.jaw += jaw;
+                accumulated.pitch += pitch;
+                accumulated.yaw += yaw;
+                accumulated.roll += roll;
+                accumulated.count++;
+            };
+        }
+
+        /* ==========================================================================
+           7. MATRIX TO EULER ANGLES CONVERSION
+           ========================================================================== */
+        function extractEulerAngles(matrix) {
+            // 4x4 Transformation matrix from MediaPipe
+            // m00, m01, m02, m03, m10, m11 ...
+            let m00 = matrix[0], m01 = matrix[1], m02 = matrix[2];
+            let m10 = matrix[4], m11 = matrix[5], m12 = matrix[6];
+            let m20 = matrix[8], m21 = matrix[9], m22 = matrix[10];
+
+            let pitch = Math.atan2(-m12, m22);
+            let yaw = Math.atan2(m02, Math.sqrt(m12 * m12 + m22 * m22));
+            let roll = Math.atan2(m10, m00);
+
+            // Convert to degrees
+            const rad2deg = 180 / Math.PI;
+            return {
+                pitch: pitch * rad2deg,
+                yaw: yaw * rad2deg,
+                roll: roll * rad2deg
+            };
+        }
+
+        /* ==========================================================================
+           8. CORE RENDER LOOP & SVG UPDATER
+           ========================================================================== */
+        function renderLoop() {
+            animationFrameId = requestAnimationFrame(renderLoop);
+
+            const video = document.getElementById("webcam");
+            let currentTime = performance.now();
+
+            let blendshapes = {};
+            let angles = { pitch: 0, yaw: 0, roll: 0 };
+            let hasFace = false;
+
+            if (state.isDemoMode) {
+                // Synthesize expressions in Demo Mode via Mouse & Key inputs
+                hasFace = true;
+                const mouseNormX = (state.demo.mouseX / window.innerWidth - 0.5) * 2;
+                const mouseNormY = (state.demo.mouseY / window.innerHeight - 0.5) * 2;
+
+                angles.yaw = mouseNormX * 35;
+                angles.pitch = -mouseNormY * 25;
+                angles.roll = mouseNormX * 10;
+
+                blendshapes = {
+                    eyeBlinkLeft: state.demo.isClicking ? 0.9 : 0.05,
+                    eyeBlinkRight: state.demo.isClicking ? 0.9 : 0.05,
+                    jawOpen: state.demo.isSpace ? 0.8 : 0.05,
+                    mouthSmileLeft: 0.2,
+                    mouthSmileRight: 0.2,
+                    eyeLookInLeft: clamp(mouseNormX, 0, 1),
+                    eyeLookOutLeft: clamp(-mouseNormX, 0, 1),
+                    eyeLookUpLeft: clamp(-mouseNormY, 0, 1),
+                    eyeLookDownLeft: clamp(mouseNormY, 0, 1),
+                    browInnerUp: state.demo.isSpace ? 0.6 : 0.1
+                };
+            } else if (faceLandmarker && video.readyState >= 2) {
+                if (video.currentTime !== state.lastVideoTime) {
+                    state.lastVideoTime = video.currentTime;
+                    const results = faceLandmarker.detectForVideo(video, currentTime);
+
+                    if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+                        hasFace = true;
+                        // Map blendshape array to key-value map
+                        results.faceBlendshapes[0].categories.forEach(cat => {
+                            blendshapes[cat.categoryName] = cat.score;
+                        });
+
+                        if (results.facialTransformationMatrixes && results.facialTransformationMatrixes[0]) {
+                            angles = extractEulerAngles(results.facialTransformationMatrixes[0]);
+                        }
+                    }
+                } else {
+                    return; // Skip duplicate frame
+                }
+            }
+
+            state.faceDetected = hasFace;
+            const warningEl = document.getElementById("face-warning");
+            const labelEl = document.getElementById("expression-label");
+
+            if (!hasFace) {
+                warningEl.classList.remove("hidden");
+                labelEl.innerText = "얼굴이 보이지 않아요 (대기 중)";
+                applyIdleAnimation(currentTime);
+                return;
+            } else {
+                warningEl.classList.add("hidden");
+            }
+
+            // Calibrating step
+            if (state.isCalibrating && window._calibrationCollector) {
+                window._calibrationCollector(
+                    blendshapes.jawOpen || 0,
+                    angles.pitch,
+                    angles.yaw,
+                    angles.roll
+                );
+            }
+
+            // Apply Calibration & Sensitivity Adjustments
+            let rawJaw = Math.max(0, (blendshapes.jawOpen || 0) - state.calibration.jawOpen) * state.sensitivity.mouth;
+            let rawPitch = (angles.pitch - state.calibration.pitch) * state.sensitivity.head;
+            let rawYaw = (angles.yaw - state.calibration.yaw) * state.sensitivity.head;
+            let rawRoll = (angles.roll - state.calibration.roll) * state.sensitivity.head;
+
+            // Mirror mode adjustment for Yaw & Roll
+            if (state.isMirror) {
+                rawYaw = -rawYaw;
+                rawRoll = -rawRoll;
+            }
+
+            // Filter & Smooth tracking values
+            const smoothedJaw = filters.jawOpen.filter(clamp(rawJaw, 0, 1));
+            const smoothedSmile = filters.mouthSmile.filter((blendshapes.mouthSmileLeft || 0) + (blendshapes.mouthSmileRight || 0));
+            const smoothedFunnel = filters.mouthFunnel.filter(blendshapes.mouthFunnel || 0);
+
+            const smoothedPitch = clamp(filters.pitch.filter(rawPitch), -CONFIG.LIMITS.PITCH, CONFIG.LIMITS.PITCH);
+            const smoothedYaw = clamp(filters.yaw.filter(rawYaw), -CONFIG.LIMITS.YAW, CONFIG.LIMITS.YAW);
+            const smoothedRoll = clamp(filters.roll.filter(rawRoll), -CONFIG.LIMITS.ROLL, CONFIG.LIMITS.ROLL);
+
+            // Eye Blink Hysteresis Logic
+            let rawBlinkL = (blendshapes.eyeBlinkLeft || 0) * state.sensitivity.blink;
+            let rawBlinkR = (blendshapes.eyeBlinkRight || 0) * state.sensitivity.blink;
+
+            // Correct Left/Right for Mirror mode
+            if (state.isMirror) {
+                [rawBlinkL, rawBlinkR] = [rawBlinkR, rawBlinkL];
+            }
+
+            const valBlinkL = filters.blinkL.filter(rawBlinkL);
+            const valBlinkR = filters.blinkR.filter(rawBlinkR);
+
+            const isClosedL = valBlinkL > CONFIG.BLINK_CLOSE_THRESHOLD;
+            const isClosedR = valBlinkR > CONFIG.BLINK_CLOSE_THRESHOLD;
+
+            // Eye Gaze Tracking
+            let lookX = (blendshapes.eyeLookInLeft || 0) - (blendshapes.eyeLookOutLeft || 0);
+            let lookY = (blendshapes.eyeLookUpLeft || 0) - (blendshapes.eyeLookDownLeft || 0);
+            if (state.isMirror) lookX = -lookX;
+            const smoothedLookX = filters.eyeLookX.filter(lookX);
+            const smoothedLookY = filters.eyeLookY.filter(lookY);
+
+            // Eyebrows
+            const browInner = blendshapes.browInnerUp || 0;
+            const browDown = (blendshapes.browDownLeft || 0 + blendshapes.browDownRight || 0) / 2;
+            const smoothedBrowL = filters.browLeft.filter(browInner - browDown);
+            const smoothedBrowR = filters.browRight.filter(browInner - browDown);
+
+            // Determine Expression Label for Debug Badge
+            let currentExpr = "무표정 😐";
+            if (isClosedL && isClosedR) currentExpr = "눈 감음 😴";
+            else if (isClosedL || isClosedR) currentExpr = "윙크 😜";
+            else if (smoothedJaw > 0.45) currentExpr = "놀람 😮";
+            else if (smoothedSmile > 0.5) currentExpr = "웃음 😊";
+            else if (blendshapes.cheekPuff > 0.4) currentExpr = "볼 부풀림 🎈";
+            else if (blendshapes.tongueOut > 0.3) currentExpr = "메롱 😛";
+
+            labelEl.innerText = `${currentExpr}`;
+
+            // Update SVG Avatar DOM Properties
+            updateAvatarSVG({
+                jawOpen: smoothedJaw,
+                smile: smoothedSmile,
+                funnel: smoothedFunnel,
+                blinkL: isClosedL,
+                blinkR: isClosedR,
+                lookX: smoothedLookX,
+                lookY: smoothedLookY,
+                browL: smoothedBrowL,
+                browR: smoothedBrowR,
+                pitch: smoothedPitch,
+                yaw: smoothedYaw,
+                roll: smoothedRoll,
+                tongue: (blendshapes.tongueOut || 0) > 0.3,
+                puff: (blendshapes.cheekPuff || 0) > 0.3
+            });
+        }
+
+        /* ==========================================================================
+           9. SVG AVATAR DOM MANIPULATION & EAR PHYSICS
+           ========================================================================== */
+        function updateAvatarSVG(data) {
+            const headGroup = document.getElementById("head-group");
+            const faceFeatures = document.getElementById("face-features");
+            const earL = document.getElementById("ear-left");
+            const earR = document.getElementById("ear-right");
+            const mouthPath = document.getElementById("mouth-path");
+            const mouthGroup = document.getElementById("mouth-group");
+            const tongue = document.getElementById("tongue");
+            const blushL = document.getElementById("blush-left");
+            const blushR = document.getElementById("blush-right");
+
+            if (!headGroup) return;
+
+            // 1. Head Roll & Pitch Transform
+            // Roll: rotates the whole head group
+            // Pitch: scales slightly & shifts vertically
+            const pitchShiftY = data.pitch * 0.8;
+            const pitchScaleY = 1 - Math.abs(data.pitch) * 0.002;
+            headGroup.setAttribute("transform", `rotate(${data.roll}) translate(0, ${pitchShiftY}) scale(1, ${pitchScaleY})`);
+
+            // 2. Parallax 3D Effect via Yaw (Feature shift & Scale)
+            const featureShiftX = data.yaw * 1.2;
+            const featureShiftY = data.pitch * 0.5;
+            if (faceFeatures) {
+                faceFeatures.setAttribute("transform", `translate(${featureShiftX}, ${featureShiftY})`);
+            }
+
+            // 3. Ear Spring Inertia Simulation
+            const targetEarAngleL = -data.roll * 0.5 - data.yaw * 0.3;
+            const targetEarAngleR = -data.roll * 0.5 + data.yaw * 0.3;
+
+            state.earSpring.velL += (targetEarAngleL - state.earSpring.angleL) * CONFIG.EAR_SPRING_STIFFNESS;
+            state.earSpring.velL *= CONFIG.EAR_SPRING_DAMPING;
+            state.earSpring.angleL += state.earSpring.velL;
+
+            state.earSpring.velR += (targetEarAngleR - state.earSpring.angleR) * CONFIG.EAR_SPRING_STIFFNESS;
+            state.earSpring.velR *= CONFIG.EAR_SPRING_DAMPING;
+            state.earSpring.angleR += state.earSpring.velR;
+
+            if (earL) earL.setAttribute("transform", `rotate(${state.earSpring.angleL})`);
+            if (earR) earR.setAttribute("transform", `rotate(${state.earSpring.angleR})`);
+
+            // 4. Eyes (Blink & Pupils Gaze)
+            ['left', 'right'].forEach(side => {
+                const isClosed = side === 'left' ? data.blinkL : data.blinkR;
+                const eyeGroup = document.getElementById(`eye-${side}`);
+                if (eyeGroup) {
+                    const eyeWhite = eyeGroup.querySelector(".eye-white");
+                    const pupil = eyeGroup.querySelector(".pupil");
+                    const pupilGlint = eyeGroup.querySelector(".pupil-glint");
+                    const eyeClosed = eyeGroup.querySelector(".eye-closed");
+
+                    if (isClosed) {
+                        eyeWhite.classList.add("hidden");
+                        pupil.classList.add("hidden");
+                        pupilGlint.classList.add("hidden");
+                        eyeClosed.classList.remove("hidden");
+                    } else {
+                        eyeWhite.classList.remove("hidden");
+                        pupil.classList.remove("hidden");
+                        pupilGlint.classList.remove("hidden");
+                        eyeClosed.classList.add("hidden");
+
+                        // Move Pupils
+                        const pX = data.lookX * 8;
+                        const pY = -data.lookY * 6;
+                        pupil.setAttribute("transform", `translate(${pX}, ${pY})`);
+                        pupilGlint.setAttribute("transform", `translate(${pX}, ${pY})`);
+                    }
+                }
+            });
+
+            // 5. Eyebrows Position & Rotation
+            const eyebrowL = document.getElementById("eyebrow-left");
+            const eyebrowR = document.getElementById("eyebrow-right");
+            if (eyebrowL) eyebrowL.setAttribute("transform", `translate(0, ${-data.browL * 10}) rotate(${-data.browL * 15})`);
+            if (eyebrowR) eyebrowR.setAttribute("transform", `translate(0, ${-data.browR * 10}) rotate(${data.browR * 15})`);
+
+            // 6. Mouth Shape Morphing
+            if (mouthPath && mouthGroup) {
+                const mouthOpenH = data.jawOpen * 30;
+                const mouthWidth = 36 + data.smile * 12 - data.funnel * 10;
+                
+                if (data.jawOpen > 0.15) {
+                    // Open Mouth (Filled Oval Path)
+                    const d = `M ${200 - mouthWidth/2} 248 Q 200 ${248 - data.smile*6} ${200 + mouthWidth/2} 248 Q 200 ${248 + mouthOpenH + 10} ${200 - mouthWidth/2} 248 Z`;
+                    mouthPath.setAttribute("d", d);
+                    mouthPath.setAttribute("fill", "#4A3E3D");
+                } else if (data.funnel > 0.4) {
+                    // "O" Shaped Mouth
+                    const d = `M 190 250 A 10 12 0 1 0 210 250 A 10 12 0 1 0 190 250 Z`;
+                    mouthPath.setAttribute("d", d);
+                    mouthPath.setAttribute("fill", "#4A3E3D");
+                } else {
+                    // Smile / Default Line Path
+                    const smileCurve = 250 + data.smile * 8;
+                    const d = `M ${200 - mouthWidth/2} 245 Q 200 ${smileCurve} ${200 + mouthWidth/2} 245`;
+                    mouthPath.setAttribute("d", d);
+                    mouthPath.setAttribute("fill", "none");
+                }
+
+                // Tongue Out
+                if (tongue) {
+                    if (data.tongue) tongue.classList.remove("hidden");
+                    else tongue.classList.add("hidden");
+                }
+            }
+
+            // 7. Cheek Puff (Blush scale)
+            if (blushL && blushR) {
+                const blushScale = data.puff ? 1.4 : 1.0;
+                blushL.setAttribute("transform", `scale(${blushScale})`);
+                blushR.setAttribute("transform", `scale(${blushScale})`);
+            }
+        }
+
+        // Idle Animation when Face is Lost
+        function applyIdleAnimation(time) {
+            const idleY = Math.sin(time * 0.002) * 6;
+            const idleRoll = Math.cos(time * 0.0015) * 2;
+            const isAutoBlink = Math.sin(time * 0.003) > 0.96;
+
+            updateAvatarSVG({
+                jawOpen: 0,
+                smile: 0.2,
+                funnel: 0,
+                blinkL: isAutoBlink,
+                blinkR: isAutoBlink,
+                lookX: Math.sin(time * 0.001) * 0.3,
+                lookY: 0,
+                browL: 0,
+                browR: 0,
+                pitch: 0,
+                yaw: 0,
+                roll: idleRoll,
+                tongue: false,
+                puff: false
+            });
+            
+            const headGroup = document.getElementById("head-group");
+            if (headGroup) {
+                headGroup.setAttribute("transform", `translate(0, ${idleY}) rotate(${idleRoll})`);
+            }
+        }
+
+        /* ==========================================================================
+           10. CHARACTER SWITCHING & UI EVENT HANDLERS
+           ========================================================================== */
+        function switchCharacter(charKey) {
+            if (!CHARACTERS[charKey]) return;
+            state.activeChar = charKey;
+
+            const wrapper = document.getElementById("avatar-wrapper");
+            const stage = document.getElementById("stage");
+
+            // Smooth scale out animation
+            wrapper.style.transform = "scale(0.85)";
+            wrapper.style.opacity = "0";
+
+            setTimeout(() => {
+                wrapper.innerHTML = CHARACTERS[charKey].renderSVG();
+                stage.style.backgroundColor = CHARACTERS[charKey].bgColor;
+
+                // Scale in animation
+                wrapper.style.transform = "scale(1)";
+                wrapper.style.opacity = "1";
+            }, 150);
+
+            // Update Active Button Style
+            document.querySelectorAll(".char-select-btn").forEach(btn => {
+                if (btn.getAttribute("data-char") === charKey) {
+                    btn.className = "char-select-btn btn-bounce px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-jua transition-all bg-amber-100 text-amber-800 shadow-sm border border-amber-300 whitespace-nowrap";
+                } else {
+                    btn.className = "char-select-btn btn-bounce px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-jua transition-all text-gray-600 hover:bg-gray-100 whitespace-nowrap";
+                }
+            });
+        }
+
+        function exportSVGToPNG() {
+            const svgEl = document.getElementById("avatar-svg");
+            if (!svgEl) return;
+
+            const canvas = document.getElementById("export-canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = 800;
+            canvas.height = 800;
+
+            const xml = new XMLSerializer().serializeToString(svgEl);
+            const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+
+            const img = new Image();
+            img.onload = () => {
+                ctx.fillStyle = CHARACTERS[state.activeChar].bgColor;
+                ctx.fillRect(0, 0, 800, 800);
+                ctx.drawImage(img, 0, 0, 800, 800);
+                URL.revokeObjectURL(url);
+
+                // Download PNG Link
+                const a = document.createElement("a");
+                a.download = `${CHARACTERS[state.activeChar].name}_표정.png`;
+                a.href = canvas.toDataURL("image/png");
+                a.click();
+            };
+            img.src = url;
+        }
+
+        function showLoading(show, text = "") {
+            const modal = document.getElementById("loading-modal");
+            const txt = document.getElementById("loading-text");
+            if (show) {
+                txt.innerText = text;
+                modal.classList.remove("hidden");
+            } else {
+                modal.classList.add("hidden");
+            }
+        }
+
+        function showError(title, desc) {
+            document.getElementById("error-title").innerText = title;
+            document.getElementById("error-desc").innerText = desc;
+            document.getElementById("error-modal").classList.remove("hidden");
+        }
+
+        function startDemoMode(msg) {
+            state.isDemoMode = true;
+            document.getElementById("start-modal").classList.add("hidden");
+            document.getElementById("error-modal").classList.add("hidden");
+            document.getElementById("webcam-preview-box").classList.add("hidden");
+            document.getElementById("btn-demo-toggle").classList.add("bg-indigo-300");
+            document.getElementById("demo-toggle-text").innerText = "🎮 데모 온";
+
+            if (msg) {
+                document.getElementById("expression-label").innerText = msg;
+            }
+
+            if (!animationFrameId) {
+                renderLoop();
+            }
+        }
+
+        /* ==========================================================================
+           11. INITIALIZATION & EVENT LISTENERS SETUP
+           ========================================================================== */
+        window.addEventListener("DOMContentLoaded", () => {
+            // Render default cat character
+            switchCharacter('cat');
+
+            // Button: Start Camera
+            document.getElementById("btn-start-camera").addEventListener("click", async () => {
+                const mpReady = await initMediaPipe();
+                if (mpReady) {
+                    startWebcam();
+                }
+            });
+
+            // Button: Start Demo Mode
+            document.getElementById("btn-start-demo").addEventListener("click", () => {
+                startDemoMode("데모 모드 실행 중 (마우스/클릭/스페이스바)");
+            });
+
+            // Button: Demo Mode Toggle
+            document.getElementById("btn-demo-toggle").addEventListener("click", () => {
+                state.isDemoMode = !state.isDemoMode;
+                const toggleBtnText = document.getElementById("demo-toggle-text");
+                const webcamBox = document.getElementById("webcam-preview-box");
+
+                if (state.isDemoMode) {
+                    toggleBtnText.innerText = "🎮 데모 온";
+                    webcamBox.classList.add("hidden");
+                } else {
+                    toggleBtnText.innerText = "데모 모드";
+                    webcamBox.classList.remove("hidden");
+                }
+            });
+
+            // Button: Recalibrate
+            document.getElementById("btn-recalibrate").addEventListener("click", triggerCalibration);
+
+            // Character Switcher Buttons
+            document.querySelectorAll(".char-select-btn").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    const charKey = e.currentTarget.getAttribute("data-char");
+                    switchCharacter(charKey);
+                });
+            });
+
+            // Drawer Settings Toggle
+            const settingsPanel = document.getElementById("settings-panel");
+            document.getElementById("btn-toggle-settings").addEventListener("click", () => {
+                settingsPanel.classList.toggle("hidden");
+            });
+            document.getElementById("btn-close-settings").addEventListener("click", () => {
+                settingsPanel.classList.add("hidden");
+            });
+
+            // Webcam Preview Toggle
+            document.getElementById("toggle-webcam-preview").addEventListener("change", (e) => {
+                const box = document.getElementById("webcam-preview-box");
+                if (e.target.checked) box.classList.remove("hidden");
+                else box.classList.add("hidden");
+            });
+
+            // Mirror Toggle
+            document.getElementById("toggle-mirror").addEventListener("change", (e) => {
+                state.isMirror = e.target.checked;
+                const video = document.getElementById("webcam");
+                if (state.isMirror) video.classList.add("-scale-x-100");
+                else video.classList.remove("-scale-x-100");
+            });
+
+            // Sensitivity Sliders
+            document.getElementById("slider-sens-blink").addEventListener("input", (e) => {
+                state.sensitivity.blink = parseFloat(e.target.value);
+                document.getElementById("val-sens-blink").innerText = e.target.value;
+            });
+            document.getElementById("slider-sens-mouth").addEventListener("input", (e) => {
+                state.sensitivity.mouth = parseFloat(e.target.value);
+                document.getElementById("val-sens-mouth").innerText = e.target.value;
+            });
+            document.getElementById("slider-sens-head").addEventListener("input", (e) => {
+                state.sensitivity.head = parseFloat(e.target.value);
+                document.getElementById("val-sens-head").innerText = e.target.value;
+            });
+            document.getElementById("slider-smoothing").addEventListener("input", (e) => {
+                const alpha = parseFloat(e.target.value);
+                document.getElementById("val-smoothing").innerText = e.target.value;
+                Object.values(filters).forEach(f => f.alpha = alpha);
+            });
+
+            // Background Color Picker Buttons
+            document.querySelectorAll("[data-bg]").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    const color = e.currentTarget.getAttribute("data-bg");
+                    document.getElementById("stage").style.backgroundColor = color;
+                });
+            });
+
+            // Screenshot Export
+            document.getElementById("btn-screenshot").addEventListener("click", exportSVGToPNG);
+
+            // Error Modal Retries
+            document.getElementById("btn-error-retry").addEventListener("click", () => {
+                document.getElementById("error-modal").classList.add("hidden");
+                startWebcam();
+            });
+            document.getElementById("btn-error-demo").addEventListener("click", () => {
+                startDemoMode();
+            });
+
+            // Demo Mode Mouse & Keyboard Listeners
+            window.addEventListener("mousemove", (e) => {
+                if (state.isDemoMode) {
+                    state.demo.mouseX = e.clientX;
+                    state.demo.mouseY = e.clientY;
+                }
+            });
+            window.addEventListener("mousedown", () => { if (state.isDemoMode) state.demo.isClicking = true; });
+            window.addEventListener("mouseup", () => { if (state.isDemoMode) state.demo.isClicking = false; });
+            window.addEventListener("keydown", (e) => {
+                if (state.isDemoMode && e.code === "Space") {
+                    state.demo.isSpace = true;
+                }
+            });
+            window.addEventListener("keyup", (e) => {
+                if (state.isDemoMode && e.code === "Space") {
+                    state.demo.isSpace = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
